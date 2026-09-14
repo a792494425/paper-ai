@@ -1,4 +1,4 @@
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 import { getRandomOffset } from "@/utils/others/quillutils";
 
 const xml2js = require("xml2js");
@@ -32,7 +32,7 @@ interface ArxivEntry {
 
 interface Author {
   name: string;
-  affiliation?: string; // Assuming affiliation might be optional
+  affiliation?: string;
 }
 
 async function getArxivPapers(
@@ -42,7 +42,7 @@ async function getArxivPapers(
   sortBy = "submittedDate",
   sortOrder = "descending"
 ) {
-  const maxOffset = 30 - maxResults; // 假设总记录数为 20
+  const maxOffset = 30 - maxResults;
   if (offset === -1) offset = getRandomOffset(maxOffset);
   console.log("offset in arxiv", offset);
   const url = `https://proxy.14790897.xyz/proxy/https://export.arxiv.org/api/query?search_query=${query}&start=${offset}&max_results=${maxResults}&sortBy=${sortBy}&sortOrder=${sortOrder}`;
@@ -50,26 +50,37 @@ async function getArxivPapers(
   try {
     const response = await axios.get(url);
     let result = await xml2js.parseStringPromise(response.data);
-    // 这里你将得到 JSON 格式的结果
     console.log(result);
-    // 你可以在这里处理数据
     result = extractArxivData(result);
     return result;
   } catch (error: any) {
+    const status = error?.response?.status;
+    const statusText = error?.response?.statusText;
+    const responseData = error?.response?.data;
+    let detail = error?.message || "unknown error";
+
+    if (responseData !== undefined) {
+      try {
+        detail =
+          typeof responseData === "string"
+            ? responseData
+            : JSON.stringify(responseData);
+      } catch {
+        detail = error?.message || "unserializable response";
+      }
+    }
+
+    const httpStatus = status
+      ? ` HTTP ${status}${statusText ? ` ${statusText}` : ""}`
+      : "";
     throw new Error(
-      `Arxiv失败（请使用英文并缩短关键词）:${JSON.stringify(
-        error.response,
-        null,
-        2
-      )}`
+      `Arxiv失败（请使用英文并缩短关键词）${httpStatus}: ${detail}`
     );
-    // return null;
   }
 }
 
 function extractArxivData(data: ArxivFeed) {
-  // const entries = data.feed.entry;
-  const entries = data.feed.entry.slice(0, 2); // 只获取前两个条目
+  const entries = data.feed.entry.slice(0, 2);
 
   const extractedData = entries.map((entry: ArxivEntry) => {
     return {
