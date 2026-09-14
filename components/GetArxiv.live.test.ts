@@ -6,8 +6,10 @@ vi.mock("@/utils/others/quillutils", () => ({
 
 import getArxivPapers from "./GetArxiv";
 
+const liveIt = process.env.RUN_LIVE_TESTS === "1" ? it : it.skip;
+
 describe("getArxivPapers live network", () => {
-  it(
+  liveIt(
     "fetches data from arXiv over the network",
     async () => {
       const result = await getArxivPapers("all:quantum", 1, 0);
